@@ -2,26 +2,40 @@
 STEP 1 : Construct Authorization Request for grant type = Authorization code
 =============================================================================
 
-ENDPOINT   => 
-HTTP TYPE  => 
+Search the ENDPOINT in https://accounts.google.com/.well-known/openid-configuration
+ENDPOINT   => https://accounts.google.com/o/oauth2/v2/auth
 
-https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=<CLIENTID>&scope=openid%20profile%20email%20https://www.googleapis.com/auth/photoslibrary.readonly&state=state123&redirect_uri=http://localhost:8080&access_type=offline&prompt=consent
+HTTP TYPE  => GET
 
-response_type
-client_id
-scope
-state
-redirect_uri
-access_type
-prompt
+response_type=code
+client_id=myClientId
+scope=openid%20profile%20email%20https://www.googleapis.com/auth/photoslibrary.readonly	<- %20 is the "space" when encoded for URL
+state=thisShouldMatch <- The client creates this state and will get it back as part of the response, so you can check if the string matches or not
+redirect_uri=http://localhost:8080
+access_type=offline <- This means that the Authorization Code won't expire and we want to get the refresh_token (At least that is what I understood)
+prompt=consent
+
+https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=myClientId&scope=openid%20profile%20email%20https://www.googleapis.com/auth/photoslibrary.readonly&state=thisShouldMatch&redirect_uri=http://localhost:8080&access_type=offline&prompt=consent
+
+
+
+
+
 
 
 =============================================================================
 STEP 2 : Send Authorization Request and extract Code
 =============================================================================
 
-=> Start the Web Server (Optional) 
+=> Start the Web Server (Optional) (In python you can use: python -m http.server 8080)
 => Use Google Chrome to send request and capture the Authorization code
+
+After sending that HTTP Request, you will get an authorization code like this one:
+4/0ARtbsJo2naGhQZpKERghGk4F4iz__n7DYiIb2zQaR2mLaRiKFuJAY5lFp6MOxfYiTbBNFQ
+
+
+
+
 
 
 
@@ -30,20 +44,57 @@ STEP 2 : Send Authorization Request and extract Code
 STEP 3 : Construct a Token Request 
 ============================================================================
 
+Search the ENDPOINT in https://accounts.google.com/.well-known/openid-configuration
 ENDPOINT   => https://oauth2.googleapis.com/token
 HTTP TYPE  => POST
 
-grant_type
-client_id
-client_secret
-code
-redirect_uri
+grant_type=authorization_code
+client_id=myClientId
+client_secret=myClientSecret
+code=4/0ARtbsJo2naGhQZpKERghGk4F4iz__n7DYiIb2zQaR2mLaRiKFuJAY5lFp6MOxfYiTbBNFQ
+redirect_uri=http://localhost:8080
+
+
+Token response:
+{
+    "access_token": "ya29.a0Aa4xrXM9Skasd1PIGaWIvJkHWTtSks8Fajma5NQNOtaM0t5lhLl9-7MClX2Ee9CN83e8g5dIadJRC-hhOy-NDT55tf3DyossDWKBU1CD5pC7BB3geiQh-uvp9TyUoJIlQ3Pc1MSd1a2tWpV8Tr8kx29rnpDnaCgYKATASARMSFQEjDvL9saTbKvW2VPpoZo_00oJU3w0163",
+    "expires_in": 3599,
+    "refresh_token": "1//0eWFFkaQdk4ivCgYIARAAGA4SNwF-L9IrSH51ij2r7TsDKwb7uf947j_3JTie9xRjqy-tcnG3YlpaE-rxenBidc5W-DyYBcKZX1k",
+    "scope": "https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/photoslibrary.readonly openid",
+    "token_type": "Bearer",
+    "id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImJhMDc5YjQyMDI2NDFlNTRhYmNlZDhmYjEzNTRjZTAzOTE5ZmIyOTQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI5NTcxMjgyNzM5NzMtMWxlZ2JyMjlmdDcxbjhrOGlobXZmMTI1MmI0NDFjOTcuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI5NTcxMjgyNzM5NzMtMWxlZ2JyMjlmdDcxbjhrOGlobXZmMTI1MmI0NDFjOTcuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMDAyNTU2MzkxMDk4NzQ5NDI2MjciLCJlbWFpbCI6ImtlbmppZW11cmFAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImF0X2hhc2giOiI3NVhEdzh0QnVyRk1KTHZFcC1mVWRRIiwibmFtZSI6IktlbmppIEVtdXJhIiwicGljdHVyZSI6Imh0dHBzOi8vbGgzLmdvb2dsZXVzZXJjb250ZW50LmNvbS9hLS9BQ05QRXVfM0tFVF82TElVaDZTdTIwV2QwcG9ycGZmMEw4U2VMcUhFemY2RmZTRT1zOTYtYyIsImdpdmVuX25hbWUiOiJLZW5qaSIsImZhbWlseV9uYW1lIjoiRW11cmEiLCJsb2NhbGUiOiJlcyIsImlhdCI6MTY2NDA5MTYyOCwiZXhwIjoxNjY0MDk1MjI4fQ.J6wS-IfxlgCLj0OcJODtEloTzOPpyGc9YRhe5wrxMJ3rA0k1rJk-VkPttHQNW46P2sLUvaACwlWdjSF7iBIK6-XJB2RkqvPzVe8z--ozts8rF6R6XXQIAmOwje8gIUVSDeDklymSQ9hUZBvKFd9bfZuUXVZ0BLAkCpiAt443zpwDy3iMNvT-7idY6q0ZPl-ls2CMWL6PEkuNr4NQxpZDafGqoqTDQcbXkfkYPZGVoT9INBsfQe9LYfMXch2JqkcFDdXZPDGrcTPeHKZvKDuwkCmRYUnNNnZZaatSbHBoHmIeXuGi341nN8oOR6YmQiNyzH3k-xodBxaZrxTm2hNe4Q"
+}
+
+You can also use the refresh token like this:
+ENDPOINT   => https://oauth2.googleapis.com/token
+HTTP TYPE  => POST
+
+grant_type=refresh_token
+client_id=myClientId
+client_secret=myClientSecret
+refresh_token=1//0eWFFkaQdk4ivCgYIARAAGA4SNwF-L9IrSH51ij2r7TsDKwb7uf947j_3JTie9xRjqy-tcnG3YlpaE-rxenBidc5W-DyYBcKZX1k
+redirect_uri=http://localhost:8080
+
+
+
+
+
+
+
+
 
 =============================================================================
 STEP 4 : Send Token Request and extract Token
 =============================================================================
 
 => Note that Google does not return Access Token as JWT token (ID Token is returned as JWT)
+
+
+
+
+
+
+
 
 
 =============================================================================
@@ -62,6 +113,13 @@ ENDPOINT   =>
 HTTP TYPE  =>  
 
 
+
+
+
+
+
+
+
 =============================================================================
 STEP 7 : Send Google Photos API Request - See Photos of an Album
 =============================================================================
@@ -70,6 +128,13 @@ ENDPOINT   =>
 HTTP TYPE  =>  
 
 WAIT for more than 1 hour and demonstrate that the access token is invalid
+
+
+
+
+
+
+
 
 =============================================================================
 STEP 8 : Get Token Info (should fail because token has expired)
@@ -81,6 +146,13 @@ ENDPOINT   => https://www.googleapis.com/oauth2/v1/tokeninfo
 HTTP TYPE  => POST
 
 access_token=
+
+
+
+
+
+
+
 
 =============================================================================
 STEP 8 : Refresh Token
@@ -106,6 +178,13 @@ ENDPOINT   => https://openidconnect.googleapis.com/v1/userinfo
 HTTP TYPE  =>  
 
 Auth Header => 
+
+
+
+
+
+
+
 
 =============================================================================
 STEP 10 : Send request to get JWKS
